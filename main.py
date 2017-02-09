@@ -14,12 +14,65 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+#import webapp2
+#
+#class MainHandler(webapp2.RequestHandler):
+#    def get(self):
+#        self.response.write('Hello world!')
+#
+#app = webapp2.WSGIApplication([
+#    ('/', MainHandler)
+#], debug=True)
+import os
 import webapp2
+import jinja2
 
-class MainHandler(webapp2.RequestHandler):
+from google.appengine.ext import db
+
+template_dir = os.path.join(os.path.dirname(__file__), 'templates')
+jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir),
+                               autoescape = True)
+
+class Handler(webapp2.RequestHandler):
+    def write(self, *a, **kw):
+        self.response.out.write(*a, **kw)
+
+    def render_str(self, template, **params):
+        t = jinja_env.get_template(template)
+        return t.render(params)
+
+    def render(self, template, **kw):
+        self.write(self.render_str(template, **kw))
+
+class Blogpost(db.Model):
+    title = db.StringProperty(required = True)
+    blogpost = db.TextProperty(required=True)
+    created = db.DateTimeProperty(auto_now_add = True)
+
+class MainPage(Handler):
+    def render_mainblog(self, title="", blogpost="", error=""):
+        blogpost = db.GqlQuery("SELECT * FROM blogpost "
+                          "ORDER BY created DESC ")
+
+        self.render("mainblog.html", title=title, blogpost=blogpost, error=error)
+
     def get(self):
-        self.response.write('Hello world!')
+        self.render_mainblog()
+
+    def post(self):
+        title = self.request.get("title")
+        art = self.request.get("blogpost")
+
+        if title and blogpost:
+            a = blogpost(title = title, blogpost = blogpost)
+            a.put()
+
+            self.redirect("/")
+        else:
+            error = "we need both a title and a blogpost!"
+            self.render_front(title, blogpost, error)
 
 app = webapp2.WSGIApplication([
-    ('/', MainHandler)
-], debug=True)
+    ('/', MainPage),
+    ('blog', Blogpost)
+], debug = True)

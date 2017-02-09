@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block content %}
+<body>
+    <h1><a href="/">build-a-blog</a></h1>
+
+    <hr>
+
+    {% for blogpost in blogposts %}
+        <div class="blogpost">
+            <div class="blogpost-title">{{blogpost.title}}</div>
+            <pre class="blogpost-body">{{blogpost.blogposts}}</pre>
+        </div>
+    {% endfor %}
+
+</body>
+<p class="error">{{ error if error else "" }}</p>
+{% endblock %}
