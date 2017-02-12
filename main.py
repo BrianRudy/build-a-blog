@@ -1,28 +1,3 @@
-#!/usr/bin/env python
-#
-# Copyright 2007 Google Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-#
-#import webapp2
-#
-#class MainHandler(webapp2.RequestHandler):
-#    def get(self):
-#        self.response.write('Hello world!')
-#
-#app = webapp2.WSGIApplication([
-#    ('/', MainHandler)
-#], debug=True)
 import os
 import webapp2
 import jinja2
@@ -49,30 +24,41 @@ class Blogpost(db.Model):
     blogpost = db.TextProperty(required=True)
     created = db.DateTimeProperty(auto_now_add = True)
 
-class MainPage(Handler):
-    def render_mainblog(self, title="", blogpost="", error=""):
-        blogpost = db.GqlQuery("SELECT * FROM blogpost "
-                          "ORDER BY created DESC ")
-
-        self.render("mainblog.html", title=title, blogpost=blogpost, error=error)
+class Newpost(Handler):
+    def render_newpost(self, title="", blogpost="", error=""):
+        self.render("newpost.html", title=title, blogpost=blogpost, error=error)
 
     def get(self):
-        self.render_mainblog()
+        self.render_newpost()
 
     def post(self):
         title = self.request.get("title")
-        art = self.request.get("blogpost")
+        blogpost = self.request.get("blogpost")
 
         if title and blogpost:
-            a = blogpost(title = title, blogpost = blogpost)
+            a = Blogpost(title = title, blogpost = blogpost)
             a.put()
 
-            self.redirect("/")
+            self.redirect("/blog")
         else:
             error = "we need both a title and a blogpost!"
-            self.render_front(title, blogpost, error)
+            self.render_newpost(title, blogpost, error)
+
+class Blog(Handler):
+    def render_mainblog(self, title="", blogpost="", error=""):
+        blogposts = db.GqlQuery("SELECT * FROM Blogpost ORDER BY created DESC LIMIT 5")
+
+        self.render("mainblog.html", title=title, blogpost=blogpost, error=error, blogposts=blogposts)
+
+    def get(self):
+        title = self.request.get("title")
+        blogpost = self.request.get("blogpost")
+        self.render_mainblog()
+
+    def post(self):
+        self.redirect("/")
 
 app = webapp2.WSGIApplication([
-    ('/', MainPage),
-    ('blog', Blogpost)
+    ('/', Newpost),
+    ('/blog', Blog)
 ], debug = True)

@@ -12,7 +12,7 @@
             padding: 10px;
         }
 
-        .eeror {
+        .error {
             color: red
         }
 
@@ -42,21 +42,26 @@
             margin: 20px;
         }
 
-        .art + .art {
+        .blog + .blog {
             margin-top: 20px;
         }
 
-        .art-title {
+        .blog-title {
             font-weight: bold;
         }
-        .art-body {
+        .blog-body {
             margin: 0;
             font-size: 17px;
         }
     </style>
-    <head>
+    </head>
+    <body>
+        <h1>
+            <a>Build-a-Blog</a>
+        </h1>
 
     {% block content %}
-    (% endblock%})
+    {% endblock %}
 
+    </body>
 </html>

@@ -1,18 +1,21 @@
 {% extends "base.html" %}
 
 {% block content %}
-<body>
-    <h1><a href="/">build-a-blog</a></h1>
+<form method="post">
+    <label>
+        <div>Title</div>
+        <input type="text" name="title" value={{title}}>
+    </label>
 
-    <hr>
+    <label>
+        <div>Blogpost</div>
+        <textarea name="blogpost">{{blogpost}}</textarea>
+    </label>
 
-    {% for blogpost in blogposts %}
-        <div class="blogpost">
-            <div class="blogpost-title">{{blogpost.title}}</div>
-            <pre class="blogpost-body">{{blogpost.blogposts}}</pre>
-        </div>
-    {% endfor %}
+    <div class="error">{{error}}</div>
 
-</body>
-<p class="error">{{ error if error else "" }}</p>
+    <input type= "submit">
+</form>
+
 {% endblock %}
+<p class="error">{{ error if error else "" }}</p>
