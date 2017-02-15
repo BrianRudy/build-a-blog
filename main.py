@@ -1,64 +1,138 @@
 import os
-import webapp2
 import jinja2
-
+import webapp2
 from google.appengine.ext import db
 
-template_dir = os.path.join(os.path.dirname(__file__), 'templates')
-jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir),
-                               autoescape = True)
+# set up jinja
+template_dir=os.path.join(os.path.dirname(__file__), "templates")
+jinja_env=jinja2.Environment(loader=jinja2.FileSystemLoader(template_dir),
+                             autoescape=True)
+
+class Post(db.Model):
+    subject = db.StringProperty(required = True)
+    content = db.TextProperty(required = True)
+    created = db.DateTimeProperty(auto_now_add = True)
+    last_modified = db.DateTimeProperty(auto_now = True)
+
+    def render(self):
+        self._render_text = self.content.replace('\n', '<br>')
+        return render_str("post.html", p = self)
+
+def render_post(response, post):
+    response.out.write('<b>' + post.subject + '</b><br>')
+    response.out.write(post.content)
+
+def render_str(template, **params):
+    t = jinja_env.get_template(template)
+    return t.render(params)
+
+def blog_key(name = 'default'):
+    return db.Key.from_path('blogs', name)
+
+def get_posts(limit=5, offset=0):
+    q_str = 'select * from Post order by created desc limit {} offset {}'.\
+            format(limit, offset)
+    rows = db.GqlQuery(q_str).count()
+    page_rows = db.GqlQuery(q_str).count(limit=limit, offset=offset)
+    result = db.GqlQuery(q_str)
+    return (result, rows, page_rows)
+
+def get_cookies(request):
+    cookies = {}
+    raw_cookies = request.headers.get("Cookie")
+    if raw_cookies:
+        for cookie in raw_cookies.split(";"):
+            print cookie
+            name, value = cookie.split("=")
+            cookies[name] = value
+    return cookies
 
 class Handler(webapp2.RequestHandler):
     def write(self, *a, **kw):
         self.response.out.write(*a, **kw)
 
     def render_str(self, template, **params):
-        t = jinja_env.get_template(template)
-        return t.render(params)
+        return render_str(template, **params)
 
     def render(self, template, **kw):
         self.write(self.render_str(template, **kw))
 
-class Blogpost(db.Model):
-    title = db.StringProperty(required = True)
-    blogpost = db.TextProperty(required=True)
-    created = db.DateTimeProperty(auto_now_add = True)
-
-class Newpost(Handler):
-    def render_newpost(self, title="", blogpost="", error=""):
-        self.render("newpost.html", title=title, blogpost=blogpost, error=error)
-
+class Front(Handler):
     def get(self):
-        self.render_newpost()
-
-    def post(self):
-        title = self.request.get("title")
-        blogpost = self.request.get("blogpost")
-
-        if title and blogpost:
-            a = Blogpost(title = title, blogpost = blogpost)
-            a.put()
-
-            self.redirect("/blog")
+        limit = 5
+        offset = 0
+        current_page = self.request.get('page')
+        if current_page.isdigit():
+            current_page = int(current_page)
+            offset = (current_page - 1) * limit
         else:
-            error = "we need both a title and a blogpost!"
-            self.render_newpost(title, blogpost, error)
+            current_page = 1
+        posts, rows, page_rows = get_posts(limit, offset)
+        last_page = rows // limit + 1
+        if rows % limit == 0:
+            last_page -= 1
 
-class Blog(Handler):
-    def render_mainblog(self, title="", blogpost="", error=""):
-        blogposts = db.GqlQuery("SELECT * FROM Blogpost ORDER BY created DESC LIMIT 5")
+        self.response.set_cookie('page', str(current_page), path='/')
+        self.render('front.html', posts = posts, page = current_page,
+                last_page = last_page)
 
-        self.render("mainblog.html", title=title, blogpost=blogpost, error=error, blogposts=blogposts)
-
+class NewPost(Handler):
     def get(self):
-        title = self.request.get("title")
-        blogpost = self.request.get("blogpost")
-        self.render_mainblog()
+        self.render("newpost.html")
 
     def post(self):
-        self.redirect("/")
+        subject = self.request.get('subject')
+        content = self.request.get('content')
 
-app = webapp2.WSGIApplication([
-    ('/', Newpost),
-    ('/blog', Blog)
-], debug = True)
+        if subject and content:
+            p = Post(parent = blog_key(), subject = subject, content = content)
+            p.put()
+            self.redirect('/blog/{}'.format(p.key().id()))
+        else:
+            error = "subject and content, please!"
+            self.render("newpost.html", subject=subject, content=content,
+                        error=error)
+
+class Next(Handler):
+    def get(self):
+        cookies = get_cookies(self.request)
+        current_page = cookies.get('page')
+
+        if current_page.isdigit():
+            current_page = int(current_page) + 1
+        else:
+            current_page = 2
+
+        self.redirect('/blog?page={}'.format(current_page))
+
+class PostPage(Handler):
+    def get(self, *args, **kwargs):
+        key = db.Key.from_path('Post', int(kwargs['id']), parent=blog_key())
+
+        post = db.get(key)
+
+        if post:
+            self.render("permalink.html", post = post)
+            return
+
+        self.error(404)
+
+class Prev(Handler):
+    def get(self):
+        cookies = get_cookies(self.request)
+        current_page = cookies.get('page')
+        if current_page.isdigit():
+            current_page = int(current_page) - 1
+        else:
+            current_page = 1
+        self.redirect('/blog?page={}'.format(current_page))
+
+app = webapp2.WSGIApplication([('/', Front),
+        webapp2.Route(r'/blog/<id:\d+>', PostPage),
+        ('/blog', Front),
+        ('/blog/', Front),
+        ('/blog/prev', Prev),
+        ('/blog/newpost', NewPost),
+        ('/blog/next', Next)
+        ],
+        debug=True)

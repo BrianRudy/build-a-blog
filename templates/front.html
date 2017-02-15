@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+  {% for p in posts %}
+    {{ p.render() | safe }}
+    <br><br>
+  {% endfor %}
+
+  <div id='bottom'>
+    {% if page > 1 %}
+    <nav>
+        <a href="/blog/prev">< prev</a>
+    &nbsp;&nbsp; | &nbsp;&nbsp;
+    {% endif %}
+    {% if page < last_page %}
+        <a href="/blog/next">next ></a>
+    {% endif %}
+  </div>
+
+{% endblock %}

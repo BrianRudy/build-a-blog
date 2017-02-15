@@ -39,29 +39,42 @@
         }
 
         hr {
-            margin: 20px;
+            margin: 20px auto;
         }
 
-        .blog + .blog {
+        .post + .post {
             margin-top: 20px;
         }
 
-        .blog-title {
-            font-weight: bold;
+        .post-heading {
+            position: relative;
+            border-bottom: 20px;
         }
-        .blog-body {
-            margin: 0;
+
+        .post-title {
+            font-weight: bold;
+            font-size: 20px;
+        }
+
+        .post-content {
+            margin-top: 5px;
             font-size: 17px;
         }
+
     </style>
     </head>
     <body>
+        <nav>
+            <a href="/blog">Home</a>
+            |
+            <a href="/blog/newpost">NewPost</a>
         <h1>
-            <a>Build-a-Blog</a>
+            <a>Blog!</a>
         </h1>
 
     {% block content %}
     {% endblock %}
 
+        <input type='hidden' name='page' id='page' />
     </body>
 </html>
